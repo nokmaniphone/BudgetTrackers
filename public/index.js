@@ -1,3 +1,5 @@
+import { get } from "mongoose";
+
 let transactions = [];
 let myChart;
 
@@ -77,6 +79,47 @@ function populateChart() {
     }
   });
 }
+// add indexDB 
+let db;
+
+const request = indexedDB.open('transaction', 1)
+
+//check db
+const checkDatabase = () => {
+  const trasection = db.transaction(['trans'], 'readwrite')
+  const store = transaction.objectStore('trans')
+  const getAll = store.getAll()
+
+  //if there are post it to database
+  getAll.onsuccess = () => {
+    if(getAll.result.length > 0) {
+      for(let i = 0; i < getAll.result.length; ++i){
+        fetch('/api/transaction', {
+          method: "POST",
+          body: JSON.stringify(getAll.result[i].tran),
+          headers: {
+            Accept: "application/json, text/plain. */*",
+            "Content-Type": "application/json"
+          }
+        })
+        //clear out indexDB after done
+        .then( () => {
+          const transact = db.transaction(['trans'], 'readwrite')
+          const store = transact.objectStore('trans')
+          store.clear()
+        })
+        .cathch( e => console.error(e))
+      }
+    }
+  }
+}
+
+function saveRecord(tran) {
+  const transaction = db.transaction(['trans'], 'readwrite')
+  const store = transaction.objectStore('trans')
+  store.add({tran})
+  
+}
 
 function sendTransaction(isAdding) {
   let nameEl = document.querySelector("#t-name");
@@ -144,6 +187,21 @@ function sendTransaction(isAdding) {
   });
 }
 
+//if it is no indexedDB create it 
+request.onupgradeneeded = (event) => {
+  const db = event.target.result
+
+  db.createObjectStore('trans', {autoIncrement: true})
+}
+//if back to online , check indexDB and add transaction to db
+request.onsuccess = (event) => {
+  const db = event.target.result
+
+  if(navigator.online){
+    checkDatabase
+  }
+}
+
 document.querySelector("#add-btn").onclick = function() {
   sendTransaction(true);
 };
@@ -151,3 +209,6 @@ document.querySelector("#add-btn").onclick = function() {
 document.querySelector("#sub-btn").onclick = function() {
   sendTransaction(false);
 };
+
+//if back to online check db 
+window.addEventListener('online', checkDatabase)
