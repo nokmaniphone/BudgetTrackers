@@ -1,5 +1,3 @@
-import { get } from "mongoose";
-
 let transactions = [];
 let myChart;
 
